@@ -1,0 +1,4 @@
+cat > .husky/pre-commit <<'EOF'
+npm run lint
+npm test
+EOF

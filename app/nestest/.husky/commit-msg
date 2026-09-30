@@ -1,0 +1,27 @@
+#!/bin/sh
+
+commit_msg_file="$1"
+commit_msg=$(head -n 1 "$commit_msg_file")
+
+pattern='^\[US-[0-9]{3}\] (feat|fix|test|refactor|docs|chore): .+$'
+
+if ! printf '%s\n' "$commit_msg" | grep -Eq "$pattern"; then
+    echo ""
+    echo "ERROR: Formato de commit inválido."
+    echo ""
+    echo "Formato requerido:"
+    echo "[US-XXX] tipo: descripción"
+    echo ""
+    echo "Tipos permitidos:"
+    echo "feat"
+    echo "fix"
+    echo "test"
+    echo "refactor"
+    echo "docs"
+    echo "chore"
+    echo ""
+    echo "Ejemplo:"
+    echo "[US-101] feat: agregar autenticación de usuarios"
+    echo ""
+    exit 1
+fi
