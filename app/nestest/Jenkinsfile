@@ -28,7 +28,7 @@ pipeline {
 
         stage('Unit Tests') {
             steps {
-                sh 'npm test -- --runInBand'
+                sh 'npm test'
             }
         }
 
@@ -36,10 +36,12 @@ pipeline {
             steps {
                 sh 'npm run test:cov'
             }
-
             post {
                 always {
-                    archiveArtifacts artifacts: 'coverage/**', allowEmptyArchive: true
+                    archiveArtifacts(
+                        artifacts: 'coverage/**',
+                        allowEmptyArchive: true
+                    )
                 }
             }
         }
@@ -85,8 +87,10 @@ pipeline {
 
     post {
         always {
-            junit testResults: 'test-results/**/*.xml',
-                 allowEmptyResults: true
+            junit(
+                testResults: 'test-results/**/*.xml',
+                allowEmptyResults: true
+            )
         }
 
         success {
