@@ -16,30 +16,39 @@ pipeline {
 
         stage('Install dependencies') {
             steps {
-                sh 'npm ci'
+                dir('app/nestest') {
+                    sh 'npm ci'
+                }
             }
         }
 
         stage('Lint') {
             steps {
-                sh 'npm run lint'
+                dir('app/nestest') {
+                    sh 'npm run lint'
+                }
             }
         }
 
         stage('Unit Tests') {
             steps {
-                sh 'npm test'
+                dir('app/nestest') {
+                    sh 'npm test'
+                }
             }
         }
 
         stage('Coverage') {
             steps {
-                sh 'npm run test:cov'
+                dir('app/nestest') {
+                    sh 'npm run test:cov'
+                }
             }
+
             post {
                 always {
                     archiveArtifacts(
-                        artifacts: 'coverage/**',
+                        artifacts: 'app/nestest/coverage/**',
                         allowEmptyArchive: true
                     )
                 }
@@ -48,11 +57,13 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                script {
-                    def scannerHome = tool 'SonarScanner'
+                dir('app/nestest') {
+                    script {
+                        def scannerHome = tool 'SonarScanner'
 
-                    withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                        sh "${scannerHome}/bin/sonar-scanner"
+                        withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                            sh "${scannerHome}/bin/sonar-scanner"
+                        }
                     }
                 }
             }
@@ -68,7 +79,9 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'npm run build'
+                dir('app/nestest') {
+                    sh 'npm run build'
+                }
             }
         }
 
@@ -88,7 +101,7 @@ pipeline {
     post {
         always {
             junit(
-                testResults: 'test-results/**/*.xml',
+                testResults: 'app/nestest/test-results/**/*.xml',
                 allowEmptyResults: true
             )
         }
