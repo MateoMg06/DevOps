@@ -35,8 +35,8 @@ services:
 
   app:
     build:
-      context: ./app
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: DockerFile
 
     container_name: nestjs-app
     restart: unless-stopped
