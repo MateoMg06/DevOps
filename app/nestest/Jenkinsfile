@@ -18,8 +18,8 @@ pipeline {
             steps {
                 dir('app/nestest') {
                     sh 'node --version && npm --version'
-                    sh 'node -p "require(\"./package.json\").devDependencies.typescript"'
-                    sh 'node -p "require(\"./package-lock.json\").packages[\"node_modules/typescript\"].version"'
+                    sh 'npm pkg get devDependencies.typescript'
+                    sh 'grep -A 3 node_modules/typescript package-lock.json'
                     sh 'npm ci'
                 }
             }
