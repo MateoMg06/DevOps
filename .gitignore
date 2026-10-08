@@ -1,0 +1,4 @@
+# Secretos de despliegue (usado por docker-compose.yml)
+.env
+.env.*
+!.env.example

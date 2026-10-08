@@ -1,0 +1,176 @@
+pipeline {
+    agent any
+
+    environment {
+        NODE_ENV = 'test'
+        SONARQUBE_SERVER = 'SonarQube'
+
+        // La llave SSH se gestiona con Jenkins Credentials ('deploy-key').
+        // Los secretos de la app viven en el .env del servidor, nunca en el repo.
+        DEPLOY_HOST = '10.1.22.9'
+        DEPLOY_USER = 'Coder'
+        DEPLOY_PORT = '22'
+        DEPLOY_APP = 'nestjs-app'
+        DEPLOY_COMPOSE_DIR = '/home/Coder/Escritorio/DevOps/app'
+        APP_PORT = '3000'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install dependencies') {
+            steps {
+                dir('app/nestest') {
+                    sh 'node --version && npm --version'
+                    sh 'npm pkg get devDependencies.typescript'
+                    sh 'grep -A 3 node_modules/typescript package-lock.json'
+                    sh 'npm ci'
+                }
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                dir('app/nestest') {
+                    sh 'npm run lint'
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                dir('app/nestest') {
+                    sh 'npm test'
+                }
+            }
+        }
+
+        stage('Coverage') {
+            steps {
+                dir('app/nestest') {
+                    sh 'npm run test:cov'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts(
+                        artifacts: 'app/nestest/coverage/**',
+                        allowEmptyArchive: true
+                    )
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                dir('app/nestest') {
+                    script {
+                        def scannerHome = tool 'SonarScanner'
+                        withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                            sh "${scannerHome}/bin/sonar-scanner"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('app/nestest') {
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                expression {
+                    def b = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
+                    return b == 'master' || b == 'origin/master'
+                }
+            }
+            steps {
+                sshagent(['deploy-key']) {
+                    sh '''#!/usr/bin/env bash
+                        set -euo pipefail
+                        SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST}"
+                        SSH_OPTIONS=(-o BatchMode=yes -o StrictHostKeyChecking=yes -p "${DEPLOY_PORT}")
+
+                        echo ">>> Preparando despliegue en ${SSH_TARGET}"
+                        ssh "${SSH_OPTIONS[@]}" "${SSH_TARGET}" \
+                            "mkdir -p '${DEPLOY_COMPOSE_DIR}' &&
+                            if [ ! -f '${DEPLOY_COMPOSE_DIR}/.env' ]; then
+                                echo 'Falta el archivo .env de produccion en el servidor' >&2; exit 1;
+                            fi && docker compose version"
+
+                        echo ">>> Enviando el commit ${GIT_COMMIT:-${BUILD_TAG}}"
+                        git archive --format=tar HEAD app | \
+                            ssh "${SSH_OPTIONS[@]}" "${SSH_TARGET}" \
+                            "tar -xf - --strip-components=1 -C '${DEPLOY_COMPOSE_DIR}'"
+
+                        ssh "${SSH_OPTIONS[@]}" "${SSH_TARGET}" \
+                            "cd '${DEPLOY_COMPOSE_DIR}' && docker compose up -d --build --force-recreate app"
+
+                        echo ">>> Despliegue completado"
+                    '''
+                }
+            }
+        }
+
+        stage('Health Check') {
+            when {
+                expression {
+                    def b = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
+                    return b == 'master' || b == 'origin/master'
+                }
+            }
+            steps {
+                sh '''
+                    set -eu
+                    HEALTH_URL="http://${DEPLOY_HOST}:${APP_PORT}/health"
+                    echo ">>> Verificando health check en ${HEALTH_URL}"
+
+                    for i in $(seq 1 30); do
+                        if curl --max-time 2 -sf "${HEALTH_URL}" > /dev/null 2>&1; then
+                            echo ">>> Health check OK (intento ${i})"
+                            curl --max-time 2 -s "${HEALTH_URL}"
+                            exit 0
+                        fi
+                        echo ">>> Esperando... intento ${i}/30"
+                        sleep 2
+                    done
+
+                    echo ">>> ERROR: Health check falló después de 30 intentos"
+                    exit 1
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            junit(
+                testResults: 'app/nestest/test-results/**/*.xml',
+                allowEmptyResults: true
+            )
+        }
+        success {
+            echo 'Pipeline finalizado correctamente. Aplicación desplegada y saludable.'
+        }
+        failure {
+            echo 'Pipeline fallido. Revisar la etapa que generó el error.'
+        }
+    }
+}
