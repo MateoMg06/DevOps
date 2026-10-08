@@ -17,6 +17,9 @@ pipeline {
         stage('Install dependencies') {
             steps {
                 dir('app/nestest') {
+                    sh 'node --version && npm --version'
+                    sh 'node -p "require(\"./package.json\").devDependencies.typescript"'
+                    sh 'node -p "require(\"./package-lock.json\").packages[\"node_modules/typescript\"].version"'
                     sh 'npm ci'
                 }
             }
