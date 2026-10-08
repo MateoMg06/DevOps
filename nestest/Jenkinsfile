@@ -24,7 +24,7 @@ pipeline {
 
         stage('Install dependencies') {
             steps {
-                dir('app/nestest') {
+                dir('nestest') {
                     sh 'node --version && npm --version'
                     sh 'npm pkg get devDependencies.typescript'
                     sh 'grep -A 3 node_modules/typescript package-lock.json'
@@ -35,7 +35,7 @@ pipeline {
 
         stage('Lint') {
             steps {
-                dir('app/nestest') {
+                dir('nestest') {
                     sh 'npm run lint'
                 }
             }
@@ -43,7 +43,7 @@ pipeline {
 
         stage('Unit Tests') {
             steps {
-                dir('app/nestest') {
+                dir('nestest') {
                     sh 'npm test'
                 }
             }
@@ -51,14 +51,14 @@ pipeline {
 
         stage('Coverage') {
             steps {
-                dir('app/nestest') {
+                dir('nestest') {
                     sh 'npm run test:cov'
                 }
             }
             post {
                 always {
                     archiveArtifacts(
-                        artifacts: 'app/nestest/coverage/**',
+                        artifacts: 'nestest/coverage/**',
                         allowEmptyArchive: true
                     )
                 }
@@ -67,7 +67,7 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                dir('app/nestest') {
+                dir('nestest') {
                     script {
                         def scannerHome = tool 'SonarScanner'
                         withSonarQubeEnv("${SONARQUBE_SERVER}") {
@@ -88,7 +88,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                dir('app/nestest') {
+                dir('nestest') {
                     sh 'npm run build'
                 }
             }
@@ -116,9 +116,9 @@ pipeline {
                             fi && docker compose version"
 
                         echo ">>> Enviando el commit ${GIT_COMMIT:-${BUILD_TAG}}"
-                        git archive --format=tar HEAD app | \
+                        git archive --format=tar HEAD | \
                             ssh "${SSH_OPTIONS[@]}" "${SSH_TARGET}" \
-                            "tar -xf - --strip-components=1 -C '${DEPLOY_COMPOSE_DIR}'"
+                            "tar -xf - -C '${DEPLOY_COMPOSE_DIR}'"
 
                         ssh "${SSH_OPTIONS[@]}" "${SSH_TARGET}" \
                             "cd '${DEPLOY_COMPOSE_DIR}' && docker compose up -d --build --force-recreate app"
@@ -162,7 +162,7 @@ pipeline {
     post {
         always {
             junit(
-                testResults: 'app/nestest/test-results/**/*.xml',
+                testResults: 'nestest/test-results/**/*.xml',
                 allowEmptyResults: true
             )
         }

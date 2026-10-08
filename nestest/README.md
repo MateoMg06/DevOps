@@ -141,7 +141,7 @@ Para crear el Job en Jenkins:
 - Git
 - Repository: `https://github.com/MateoMg06/DevOps.git`
 - Branch: `master`
-- Script Path: `app/nestest/Jenkinsfile`
+- Script Path: `nestest/Jenkinsfile`
 
 **Environment:**
 - Las variables de entorno del Jenkinsfile se cargarán automáticamente
@@ -208,4 +208,4 @@ Para crear el Job en Jenkins:
 
 Tras pasar el Quality Gate, Jenkins empaqueta el commit que acaba de validar y lo envía al directorio remoto. Luego ejecuta `docker compose up -d --build --force-recreate app`. El `.env` del servidor queda intacto y Compose lo inyecta en el contenedor. Finalmente, Jenkins consulta `http://<DEPLOY_HOST>:3000/health` durante un máximo aproximado de 2 minutos; si no obtiene una respuesta satisfactoria, el pipeline falla.
 
-Para activar el despliegue automático, el job debe apuntar a `app/nestest/Jenkinsfile` y ejecutarse con cada push a la rama desplegable. El orden de las etapas impide desplegar si fallan los tests, SonarQube o el Quality Gate.
+Para activar el despliegue automático, el job debe apuntar a `nestest/Jenkinsfile` y ejecutarse con cada push a la rama desplegable. El orden de las etapas impide desplegar si fallan los tests, SonarQube o el Quality Gate.
