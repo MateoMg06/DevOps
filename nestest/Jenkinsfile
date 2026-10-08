@@ -5,7 +5,8 @@ pipeline {
         NODE_ENV = 'test'
         SONARQUBE_SERVER = 'SonarQube'
 
-        // Los valores sensibles se gestionan mediante credenciales de Jenkins.
+        // La llave SSH se gestiona con Jenkins Credentials ('deploy-key').
+        // Los secretos de la app viven en el .env del servidor, nunca en el repo.
         DEPLOY_HOST = '10.1.22.9'
         DEPLOY_USER = 'Coder'
         DEPLOY_PORT = '22'
@@ -94,6 +95,12 @@ pipeline {
         }
 
         stage('Deploy') {
+            when {
+                expression {
+                    def b = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
+                    return b == 'master' || b == 'origin/master'
+                }
+            }
             steps {
                 sshagent(['deploy-key']) {
                     sh '''#!/usr/bin/env bash
@@ -123,6 +130,12 @@ pipeline {
         }
 
         stage('Health Check') {
+            when {
+                expression {
+                    def b = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
+                    return b == 'master' || b == 'origin/master'
+                }
+            }
             steps {
                 sh '''
                     set -eu
