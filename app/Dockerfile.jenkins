@@ -10,4 +10,10 @@ RUN apt-get update \
     && npm --version \
     && rm -rf /var/lib/apt/lists/*
 
+# Instalar Docker CLI (se usará contra el socket del host montado)
+RUN apt-get update \
+    && apt-get install -y docker.io \
+    && rm -rf /var/lib/apt/lists/* \
+    && docker --version
+
 USER jenkins

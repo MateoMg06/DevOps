@@ -181,3 +181,31 @@ Para crear el Job en Jenkins:
 - NO poner credenciales en el `sonar-project.properties`
 - Usar siempre `withSonarQubeEnv("${SONARQUBE_SERVER}")` para que Jenkins inyecte las credenciales automáticamente
 - Las credenciales se gestionan mediante la sección "Credentials" de Jenkins, no en el código
+
+## Día 5 — CD y despliegue
+
+### Conceptos
+
+- **Deployment** es publicar y ejecutar una versión de la aplicación en un entorno.
+- **Continuous Delivery** automatiza la validación y deja cada versión lista para desplegar; el paso a producción puede requerir aprobación manual.
+- **Continuous Deployment** despliega automáticamente cada cambio que supera todas las validaciones. Este pipeline sigue este modelo para la rama configurada en Jenkins.
+- **SSH** permite que Jenkins se conecte al servidor de forma cifrada. La clave privada vive en Jenkins Credentials; el servidor debe estar en `known_hosts` para verificar su identidad.
+- **Variables de entorno** configuran la aplicación por entorno, por ejemplo `NODE_ENV` y `PORT`.
+- **Secrets** son valores sensibles, como claves de API. No se versionan ni se imprimen en logs; se guardan en un archivo `.env` protegido en el servidor.
+- **Health check** consulta `/health` después del despliegue. Jenkins espera a que la aplicación responda correctamente y marca como fallido el pipeline si no se recupera.
+
+### Prerrequisitos
+
+1. El agente Jenkins necesita Git, Docker CLI, `ssh`, `tar`, `curl` y el plugin **SSH Agent**. La imagen `Dockerfile.jenkins` ya instala Docker CLI y curl.
+2. En Jenkins, crea la credencial `deploy-key` de tipo **SSH Username with private key**. Configura el usuario de despliegue en `DEPLOY_USER` y el destino SSH en `DEPLOY_HOST` y `DEPLOY_PORT` del `Jenkinsfile`.
+3. Añade y verifica la clave pública SSH del servidor en `/var/jenkins_home/.ssh/known_hosts`, dentro del volumen persistente de Jenkins. El pipeline exige `StrictHostKeyChecking=yes`.
+4. El usuario remoto necesita permiso para ejecutar Docker y escribir en `DEPLOY_COMPOSE_DIR`. El servidor necesita Docker Compose v2 y la red Docker externa `devops_network` (créala una vez con `docker network create devops_network` si aún no existe).
+5. Crea `DEPLOY_COMPOSE_DIR/.env` directamente en el servidor y limita sus permisos (`chmod 600`). Debe contener los valores de producción `OBSERVE_APP_KEY`, `OBSERVE_APP_SECRET` y `OBSERVE_APP_NAME`; la aplicación no inicia si faltan. No copies el `.env` de desarrollo al repositorio ni al artefacto de despliegue.
+
+### Flujo automatizado
+
+`Git push → Jenkins → Tests y análisis SonarQube → Quality Gate → Build → Deploy por SSH → Health check`
+
+Tras pasar el Quality Gate, Jenkins empaqueta el commit que acaba de validar y lo envía al directorio remoto. Luego ejecuta `docker compose up -d --build --force-recreate app`. El `.env` del servidor queda intacto y Compose lo inyecta en el contenedor. Finalmente, Jenkins consulta `http://<DEPLOY_HOST>:3000/health` durante un máximo aproximado de 2 minutos; si no obtiene una respuesta satisfactoria, el pipeline falla.
+
+Para activar el despliegue automático, el job debe apuntar a `app/nestest/Jenkinsfile` y ejecutarse con cada push a la rama desplegable. El orden de las etapas impide desplegar si fallan los tests, SonarQube o el Quality Gate.
