@@ -1,0 +1,120 @@
+pipeline {
+    agent any
+
+    environment {
+        NODE_ENV = 'test'
+        SONARQUBE_SERVER = 'SonarQube'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install dependencies') {
+            steps {
+                dir('app/nestest') {
+                    sh 'node --version && npm --version'
+                    sh 'npm pkg get devDependencies.typescript'
+                    sh 'grep -A 3 node_modules/typescript package-lock.json'
+                    sh 'npm ci'
+                }
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                dir('app/nestest') {
+                    sh 'npm run lint'
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                dir('app/nestest') {
+                    sh 'npm test'
+                }
+            }
+        }
+
+        stage('Coverage') {
+            steps {
+                dir('app/nestest') {
+                    sh 'npm run test:cov'
+                }
+            }
+
+            post {
+                always {
+                    archiveArtifacts(
+                        artifacts: 'app/nestest/coverage/**',
+                        allowEmptyArchive: true
+                    )
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                dir('app/nestest') {
+                    script {
+                        def scannerHome = tool 'SonarScanner'
+
+                        withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                            sh "${scannerHome}/bin/sonar-scanner"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('app/nestest') {
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deployment será configurado durante el Día 5.'
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                echo 'Health Check será configurado durante el Día 5.'
+            }
+        }
+    }
+
+    post {
+        always {
+            junit(
+                testResults: 'app/nestest/test-results/**/*.xml',
+                allowEmptyResults: true
+            )
+        }
+
+        success {
+            echo 'Pipeline finalizado correctamente.'
+        }
+
+        failure {
+            echo 'Pipeline fallido. Revisar la etapa que generó el error.'
+        }
+    }
+}

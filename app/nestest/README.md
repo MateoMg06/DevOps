@@ -141,7 +141,7 @@ Para crear el Job en Jenkins:
 - Git
 - Repository: `https://github.com/MateoMg06/DevOps.git`
 - Branch: `master`
-- Script Path: `Jenkinsfile`
+- Script Path: `app/nestest/Jenkinsfile`
 
 **Environment:**
 - Las variables de entorno del Jenkinsfile se cargarán automáticamente
