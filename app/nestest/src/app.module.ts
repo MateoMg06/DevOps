@@ -7,7 +7,6 @@ import { AppService } from './app.service.js';
 import { HealthModule } from './health/health.module.js';
 import { HealthService } from './health/health.service.js';
 import { HealthDao } from './health/dao/health.dao.js';
-import { BirdModule } from './bird/bird.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -29,7 +28,6 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       }),
     }),
     HealthModule,
-    BirdModule,
   ],
   controllers: [AppController],
   providers: [AppService, HealthService, HealthDao],
