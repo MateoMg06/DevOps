@@ -16,4 +16,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && docker --version
 
+# Jenkins runs as root to access Docker Desktop's socket. Trust only its Git workspaces and caches.
+RUN git config --system --add safe.directory '/var/jenkins_home/workspace/*' \
+    && git config --system --add safe.directory '/var/jenkins_home/caches/*'
+
 USER jenkins
