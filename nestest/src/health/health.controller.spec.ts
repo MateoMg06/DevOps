@@ -6,13 +6,15 @@ import { vi } from 'vitest';
 describe('HealthController', () => {
   let controller: HealthController;
 
+  const healthResponse = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    application: 'NestJS DevOps',
+    version: '1.0.0',
+  };
+
   const healthServiceMock = {
-    getHealth: vi.fn().mockReturnValue({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      application: 'NestJS DevOps',
-      version: '1.0.0',
-    }),
+    getHealth: vi.fn().mockReturnValue(healthResponse),
   };
 
   beforeEach(async () => {
@@ -31,5 +33,12 @@ describe('HealthController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  it('should return the health response from the service', () => {
+    const result = controller.getHealth();
+
+    expect(healthServiceMock.getHealth).toHaveBeenCalled();
+    expect(result).toEqual(healthResponse);
   });
 });
