@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile.jenkins
     container_name: jenkins
     restart: unless-stopped
+    user: root
     privileged: true
 
     ports:
