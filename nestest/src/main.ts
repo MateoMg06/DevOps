@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { suma } from './archivo.js';
 import {
   DocumentBuilder,
   SwaggerModule,
@@ -49,7 +50,7 @@ async function bootstrap(): Promise<void> {
     app,
     documentFactory,
   );
-
+  suma(1,2)
 
   await app.listen(process.env.PORT ?? 5002);
 }

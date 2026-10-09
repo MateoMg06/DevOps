@@ -1,22 +1,30 @@
 import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
+import { format } from 'node:path';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-    {
-        ignores: [
-            'node_modules/**',
-            'dist/**',
-            'coverage/**',
-        ],
-    },
+  {
+    ignores: ['node_modules/**', 'dist/**', 'coverage/**'],
+  },
 
-    {
-        files: ['**/*.{js,ts}'],
+  {
+    files: ['**/*.{js,ts}'],
 
-        extends: [
-            js.configs.recommended,
-            tseslint.configs.recommended,
-        ],
+    extends: [js.configs.recommended, tseslint.configs.recommended],
+
+    rules: {
+      '@typescript-eslint/naming-convention': [
+        'error',
+        {
+          selector: 'variable',
+          format: ['camelCase', 'UPPER_CASE'],
+        },
+        {
+          selector: 'function',
+          format: ['camelCase','UPPER_CASE'],
+        },
+      ],
     },
+  },
 );

@@ -5,14 +5,10 @@ pipeline {
         NODE_ENV = 'test'
         SONARQUBE_SERVER = 'SonarQube'
 
-        // La llave SSH se gestiona con Jenkins Credentials ('deploy-key').
-        // Los secretos de la app viven en el .env del servidor, nunca en el repo.
-        DEPLOY_HOST = '10.1.22.9'
-        DEPLOY_USER = 'Coder'
-        DEPLOY_PORT = '22'
-        DEPLOY_APP = 'nestjs-app'
-        DEPLOY_COMPOSE_DIR = '/home/Coder/Escritorio/DevOps/app'
+        APP_CONTAINER = 'nestjs-app'
+        APP_IMAGE = 'nestjs-app'
         APP_PORT = '3000'
+        DOCKER_NETWORK = 'devops_network'
     }
 
     stages {
@@ -102,26 +98,23 @@ pipeline {
                 }
             }
             steps {
-                sshagent(['deploy-key']) {
+                withCredentials([file(credentialsId: 'app-env', variable: 'APP_ENV_FILE')]) {
                     sh '''#!/usr/bin/env bash
                         set -euo pipefail
-                        SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST}"
-                        SSH_OPTIONS=(-o BatchMode=yes -o StrictHostKeyChecking=yes -p "${DEPLOY_PORT}")
+                        docker info > /dev/null
 
-                        echo ">>> Preparando despliegue en ${SSH_TARGET}"
-                        ssh "${SSH_OPTIONS[@]}" "${SSH_TARGET}" \
-                            "mkdir -p '${DEPLOY_COMPOSE_DIR}' &&
-                            if [ ! -f '${DEPLOY_COMPOSE_DIR}/.env' ]; then
-                                echo 'Falta el archivo .env de produccion en el servidor' >&2; exit 1;
-                            fi && docker compose version"
+                        echo ">>> Construyendo imagen ${APP_IMAGE}:${BUILD_NUMBER}"
+                        docker build -f DockerFile -t "${APP_IMAGE}:${BUILD_NUMBER}" .
 
-                        echo ">>> Enviando el commit ${GIT_COMMIT:-${BUILD_TAG}}"
-                        git archive --format=tar HEAD | \
-                            ssh "${SSH_OPTIONS[@]}" "${SSH_TARGET}" \
-                            "tar -xf - -C '${DEPLOY_COMPOSE_DIR}'"
-
-                        ssh "${SSH_OPTIONS[@]}" "${SSH_TARGET}" \
-                            "cd '${DEPLOY_COMPOSE_DIR}' && docker compose up -d --build --force-recreate app"
+                        echo ">>> Reemplazando contenedor ${APP_CONTAINER}"
+                        docker rm -f "${APP_CONTAINER}" || true
+                        docker run -d \
+                            --name "${APP_CONTAINER}" \
+                            --restart unless-stopped \
+                            --network "${DOCKER_NETWORK}" \
+                            --publish "${APP_PORT}:${APP_PORT}" \
+                            --env-file "${APP_ENV_FILE}" \
+                            "${APP_IMAGE}:${BUILD_NUMBER}"
 
                         echo ">>> Despliegue completado"
                     '''
@@ -139,7 +132,7 @@ pipeline {
             steps {
                 sh '''
                     set -eu
-                    HEALTH_URL="http://${DEPLOY_HOST}:${APP_PORT}/health"
+                    HEALTH_URL="http://${APP_CONTAINER}:${APP_PORT}/health"
                     echo ">>> Verificando health check en ${HEALTH_URL}"
 
                     for i in $(seq 1 30); do
@@ -153,6 +146,7 @@ pipeline {
                     done
 
                     echo ">>> ERROR: Health check falló después de 30 intentos"
+                    docker logs --tail 100 "${APP_CONTAINER}" || true
                     exit 1
                 '''
             }
