@@ -13,18 +13,5 @@ export default defineConfig(
 
     extends: [js.configs.recommended, tseslint.configs.recommended],
 
-    rules: {
-      '@typescript-eslint/naming-convention': [
-        'error',
-        {
-          selector: 'variable',
-          format: ['camelCase', 'UPPER_CASE'],
-        },
-        {
-          selector: 'function',
-          format: ['camelCase','UPPER_CASE'],
-        },
-      ],
-    },
   },
 );
