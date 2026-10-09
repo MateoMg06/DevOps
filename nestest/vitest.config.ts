@@ -8,7 +8,15 @@ export default defineConfig({
     root: './',
     include: ['**/*.spec.ts'],
     coverage: {
+      provider: 'v8',
       reporter: ['text', 'lcov'],
+      include: ['src/**/*.ts'],
+      exclude: [
+        'src/**/*.spec.ts',
+        'src/**/*.e2e-spec.ts',
+        'src/main.ts',
+        'src/**/*.module.ts',
+      ],
     },
   },
 });
